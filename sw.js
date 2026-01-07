@@ -11,6 +11,9 @@ self.addEventListener("install", (event) => {
         "/ui.js",
         "/config.js",
         "/pwa.js",
+        "/admin.html",
+        "/assets/admin/admin.js",
+        "/assets/admin/admin.css",
         "/manifest.webmanifest"
       ])
     )
