@@ -1,3 +1,5 @@
+// app.js - FULL CODE
+
 const LS = {
   TOKEN: "M_HUB_TOKEN",
   USER: "M_HUB_USER",
@@ -17,8 +19,12 @@ async function init() {
   document.getElementById("appName").textContent = window.APP_CONFIG.APP_NAME || "M_HUB";
   await registerSW();
 
-  document.getElementById("btnLogout").addEventListener("click", logout);
-  document.getElementById("btnBack").addEventListener("click", () => {
+  // Button handlers existing (still used for desktop/fallback)
+  const btnLogout = document.getElementById("btnLogout");
+  if(btnLogout) btnLogout.addEventListener("click", logout);
+  
+  const btnBack = document.getElementById("btnBack");
+  if(btnBack) btnBack.addEventListener("click", () => {
     if (state.page === "task") goTasks();
   });
 
@@ -40,8 +46,8 @@ function safeJsonParse(s) {
 function setHeaderButtons() {
   const btnLogout = document.getElementById("btnLogout");
   const btnBack = document.getElementById("btnBack");
-  btnLogout.classList.toggle("hidden", state.page === "login");
-  btnBack.classList.toggle("hidden", state.page !== "task");
+  if(btnLogout) btnLogout.classList.toggle("hidden", state.page === "login");
+  if(btnBack) btnBack.classList.toggle("hidden", state.page !== "task");
 }
 
 function setView(node) {
@@ -64,26 +70,22 @@ function logout() {
 
 function renderLogin() {
   state.page = "login";
-  const node = el("div", { class: "grid gap-4" }, [
+  const node = el("div", { class: "grid gap-4 pt-10" }, [
     el("div", { class: "bg-white rounded-2xl shadow-sm border border-slate-200 p-6" }, [
-      el("div", { class: "text-2xl font-semibold" }, ["Masuk"]),
-      el("div", { class: "text-slate-600 mt-1" }, ["Gunakan USERID dan PASSWORD dari HR."]),
-      el("div", { class: "grid gap-3 mt-5" }, [
+      el("div", { class: "text-2xl font-bold mb-1" }, ["Masuk M_HUB"]),
+      el("div", { class: "text-slate-600 text-sm" }, ["Gunakan USERID dan PASSWORD dari HR."]),
+      el("div", { class: "grid gap-3 mt-6" }, [
         labeledInput("USERID", "text", "contoh: 0004.MTK.0209", "login_userid"),
         labeledInput("PASSWORD", "password", "••••••••", "login_password"),
         el(
           "button",
           {
-            class:
-              "mt-2 w-full bg-slate-900 text-white rounded-xl py-3 font-semibold hover:bg-slate-800",
+            class: "mt-4 w-full bg-slate-900 text-white rounded-xl py-3 font-semibold hover:bg-slate-800 shadow-lg active:scale-95 transition-transform",
             onclick: onLogin,
             type: "button",
           },
           ["Masuk"]
         ),
-      ]),
-      el("div", { class: "text-xs text-slate-500 mt-4" }, [
-        "Catatan: Ini MVP internal. Token disimpan di perangkat ini."
       ]),
     ]),
   ]);
@@ -93,13 +95,12 @@ function renderLogin() {
 
 function labeledInput(label, type, placeholder, id) {
   return el("label", { class: "grid gap-1" }, [
-    el("div", { class: "text-sm font-medium text-slate-700" }, [label]),
+    el("div", { class: "text-xs font-bold text-slate-500 uppercase tracking-wide" }, [label]),
     el("input", {
       id,
       type,
       placeholder,
-      class:
-        "w-full rounded-xl border border-slate-200 px-3 py-3 focus:outline-none focus:ring-2 focus:ring-slate-300",
+      class: "w-full rounded-xl border border-slate-200 px-3 py-3 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-slate-50 focus:bg-white transition-colors",
       autocomplete: "off",
     }),
   ]);
@@ -143,62 +144,51 @@ async function goTasks() {
   }
 }
 
+// --- NEW RENDER TASKS WITH BOTTOM NAV ---
 function renderTasks() {
-  const u = state.user || {};
-  const header = el("div", { class: "mb-4" }, [
-    el("div", { class: "text-xl font-semibold" }, ["Tugas Anda"]),
-    el("div", { class: "text-sm text-slate-600 mt-1" }, [
-      `${u.name || u.userId} • ${u.unit || "-"} • ${u.pt || "-"}`
-    ]),
-  ]);
+  const list = el("div", { class: "pb-24" }, []); 
 
-  const list = el("div", { class: "grid gap-3" }, []);
+  // Header Selamat Datang
+  const u = state.user || {};
+  list.appendChild(el("div", { class: "mb-6 px-1" }, [
+    el("h1", { class: "text-2xl font-bold text-slate-900" }, ["Halo, " + (u.name ? u.name.split(" ")[0] : "Karyawan")]),
+    el("p", { class: "text-slate-500 text-sm" }, ["Selesaikan tugasmu hari ini."])
+  ]));
 
   if (!state.tasks.length) {
-    list.appendChild(
-      el("div", { class: "bg-white rounded-2xl border border-slate-200 p-6 text-slate-600" }, [
-        "Tidak ada task aktif untuk Anda saat ini."
-      ])
-    );
+    list.appendChild(el("div", { class: "text-center py-10 text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200" }, ["Hore! Tidak ada tugas aktif."]));
   } else {
-    for (const t of state.tasks) {
-      const overdue = isOverdue(t.dueAt) && !t.submitted;
-      const status = t.submitted ? badge("Submitted", "success") : overdue ? badge("Overdue", "danger") : badge("Pending");
-      const due = t.dueAt ? `Due: ${formatDue(t.dueAt)}` : "";
-
-      list.appendChild(
-        el(
-          "button",
-          {
-            class:
-              "text-left bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-sm hover:border-slate-300 transition",
-            onclick: () => openTask(t.taskSheet),
-            type: "button",
-          },
-          [
-            el("div", { class: "flex items-start justify-between gap-3" }, [
-              el("div", { class: "grid gap-1" }, [
-                el("div", { class: "font-semibold" }, [t.title || t.taskSheet]),
-                el("div", { class: "text-sm text-slate-600 line-clamp-2" }, [t.desc || ""]),
-                el("div", { class: "text-xs text-slate-500 mt-1" }, [due]),
-              ]),
-              el("div", { class: "shrink-0" }, [status]),
-            ]),
-          ]
-        )
-      );
-    }
+    // Render Kartu Native
+    state.tasks.forEach(t => {
+      list.appendChild(cardTaskNative(t, () => openTask(t.taskSheet)));
+    });
   }
 
-  setView(el("div", {}, [header, list]));
+  // Pasang Bottom Nav
+  const nav = bottomNav("tasks", (tab) => {
+    if (tab === "profile") {
+      if(confirm("Logout dari aplikasi?")) logout();
+    }
+  });
+
+  setView(el("div", {}, [list, nav]));
 }
 
 async function openTask(taskSheet) {
+  const t = state.tasks.find(x => x.taskSheet === taskSheet);
+  
+  // Alert jika REJECTED
+  if (t && t.status === "REJECTED") {
+    toast("Status: Ditolak. Silakan perbaiki data Anda.", "error");
+  }
+
   state.page = "task";
   setLoading(true, "Memuat form...");
   try {
     const res = await apiGetSchema(state.token, taskSheet);
     state.current = res;
+    // Inject status agar bisa dibaca komponen lain jika perlu
+    state.current.submissionStatus = t ? t.status : "NEW"; 
     renderTaskForm();
   } catch (e) {
     toast(String(e.message || e), "error");
@@ -208,30 +198,40 @@ async function openTask(taskSheet) {
 }
 
 function renderTaskForm() {
-  const { task, fields, data } = state.current;
-  const title = el("div", { class: "mb-4" }, [
-    el("div", { class: "text-xl font-semibold" }, [task.title || task.taskSheet]),
+  const { task, fields, data, submissionStatus } = state.current;
+  const isApproved = submissionStatus === "APPROVED";
+
+  const title = el("div", { class: "mb-6" }, [
+    el("div", { class: "text-xl font-bold" }, [task.title || task.taskSheet]),
     el("div", { class: "text-sm text-slate-600 mt-1" }, [task.desc || ""]),
-    task.dueAt ? el("div", { class: "text-xs text-slate-500 mt-1" }, [`Due: ${task.dueAt}`]) : el("div"),
   ]);
 
-  const form = el("form", { class: "grid gap-4", onsubmit: (ev) => ev.preventDefault() }, []);
-  for (const f of fields) form.appendChild(renderField(f, data));
+  const form = el("form", { class: "grid gap-5", onsubmit: (ev) => ev.preventDefault() }, []);
+  
+  // Jika Approved, form readonly
+  const forceReadonly = isApproved;
+  
+  for (const f of fields) {
+    // Jika forceReadonly aktif, kita manipulasi field readonly
+    if (forceReadonly) f.readonly = true;
+    form.appendChild(renderField(f, data));
+  }
 
-  const actions = el("div", { class: "flex items-center gap-3 pt-2" }, [
+  const actions = el("div", { class: "flex items-center gap-3 pt-4 border-t border-slate-100 mt-2" }, [
     el(
       "button",
       {
-        class: "flex-1 bg-slate-900 text-white rounded-xl py-3 font-semibold hover:bg-slate-800",
+        class: "flex-1 bg-slate-900 text-white rounded-xl py-3 font-bold hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed",
         onclick: onSubmitTask,
         type: "button",
+        disabled: isApproved ? "true" : undefined
       },
-      ["Submit"]
+      [isApproved ? "Sudah Disetujui" : "Submit Data"]
     ),
     el(
       "button",
       {
-        class: "px-4 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-sm",
+        class: "px-4 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-sm font-semibold",
         onclick: () => goTasks(),
         type: "button",
       },
@@ -239,7 +239,7 @@ function renderTaskForm() {
     ),
   ]);
 
-  const card = el("div", { class: "bg-white rounded-2xl border border-slate-200 p-6" }, [
+  const card = el("div", { class: "bg-white rounded-2xl border border-slate-200 p-6 shadow-sm mb-20" }, [
     title,
     form,
     actions,
@@ -253,19 +253,22 @@ function renderField(f, prefill) {
   const value = (prefill && typeof prefill[key] !== "undefined") ? prefill[key] : "";
 
   const labelLine = el("div", { class: "flex items-center justify-between gap-2" }, [
-    el("div", { class: "text-sm font-medium text-slate-700" }, [f.label || key]),
+    el("div", { class: "text-sm font-bold text-slate-700" }, [f.label || key]),
     f.required ? badge("Wajib", "danger") : el("span"),
   ]);
 
-  const help = f.helpText ? el("div", { class: "text-xs text-slate-500" }, [f.helpText]) : null;
-  const wrap = el("div", { class: "grid gap-1" }, [labelLine]);
+  const help = f.helpText ? el("div", { class: "text-xs text-slate-500 mb-1" }, [f.helpText]) : null;
+  const wrap = el("div", { class: "grid gap-1.5" }, [labelLine]);
   if (help) wrap.appendChild(help);
 
   const common = {
     "data-field-key": key,
-    class: "w-full rounded-xl border border-slate-200 px-3 py-3 focus:outline-none focus:ring-2 focus:ring-slate-300",
+    class: "w-full rounded-xl border border-slate-200 px-3 py-3 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-slate-50 focus:bg-white transition-colors text-sm",
   };
-  if (f.readonly) common.disabled = "true";
+  if (f.readonly) {
+    common.disabled = "true";
+    common.class += " opacity-60 cursor-not-allowed";
+  }
 
   if (f.type === "text" || f.type === "date" || f.type === "number") {
     const input = el("input", { ...common, type: f.type, value: value || "", placeholder: f.placeholder || "" });
@@ -300,7 +303,7 @@ function renderField(f, prefill) {
       if (String(value) === String(opt)) input.checked = true;
       if (f.readonly) input.disabled = true;
 
-      box.appendChild(el("label", { class: "flex items-center gap-2 text-sm", for: id }, [input, el("span", {}, [opt])]));
+      box.appendChild(el("label", { class: "flex items-center gap-2 text-sm p-2 rounded-lg border border-slate-100 bg-slate-50", for: id }, [input, el("span", {}, [opt])]));
     });
     box.setAttribute("data-field-key", key);
     wrap.appendChild(box);
@@ -317,7 +320,7 @@ function renderField(f, prefill) {
       if (selected.has(opt)) input.checked = true;
       if (f.readonly) input.disabled = true;
 
-      box.appendChild(el("label", { class: "flex items-center gap-2 text-sm", for: id }, [input, el("span", {}, [opt])]));
+      box.appendChild(el("label", { class: "flex items-center gap-2 text-sm p-2 rounded-lg border border-slate-100 bg-slate-50", for: id }, [input, el("span", {}, [opt])]));
     });
     box.setAttribute("data-field-key", key);
     wrap.appendChild(box);
@@ -339,8 +342,9 @@ function renderField(f, prefill) {
           const up = await apiUploadFile(state.token, file);
           hidden.value = up.url;
           toast("Upload berhasil", "success");
-          preview.textContent = up.url;
+          preview.textContent = "Lihat file";
           preview.href = up.url;
+          preview.classList.remove("hidden");
         } catch (e) {
           toast(String(e.message || e), "error");
           ev.target.value = "";
@@ -349,13 +353,14 @@ function renderField(f, prefill) {
         }
       },
     });
+    if (f.readonly) fileInput.disabled = true;
 
     const preview = el("a", {
-      class: "text-xs text-slate-600 underline break-all mt-2 inline-block",
+      class: `text-xs text-blue-600 font-semibold underline break-all mt-2 inline-block ${value ? "" : "hidden"}`,
       href: value || "#",
       target: "_blank",
       rel: "noopener",
-    }, [value ? value : ""]);
+    }, ["Lihat file"]);
 
     wrap.appendChild(fileInput);
     wrap.appendChild(hidden);
