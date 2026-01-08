@@ -1,35 +1,85 @@
 <!doctype html>
 <html lang="id">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>M_HUB Admin</title>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>M_HUB Admin</title>
 
-    <!-- Tailwind CDN (MVP cepat) -->
-    <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind CDN for MVP -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Optional CSS -->
-    <link rel="stylesheet" href="/assets/admin/admin.css" />
-  </head>
+  <link rel="stylesheet" href="/assets/admin/admin.css" />
+</head>
 
-  <body class="bg-slate-50 text-slate-900">
-    <header class="bg-white border-b border-slate-200">
-      <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-        <div>
-          <div class="font-semibold text-lg">M_HUB Admin</div>
-          <div class="text-xs text-slate-500">Create task + set fields + auto kolom</div>
+<body class="bg-slate-50 text-slate-900">
+  <!-- Top bar (mobile) -->
+  <header class="md:hidden sticky top-0 z-40 bg-white border-b border-slate-200">
+    <div class="px-4 py-3 flex items-center justify-between">
+      <div>
+        <div class="font-semibold">M_HUB Admin</div>
+        <div class="text-xs text-slate-500" id="topUser"></div>
+      </div>
+      <div class="flex gap-2">
+        <a href="/" class="px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-sm">App</a>
+        <button id="btnLogout" class="px-3 py-2 rounded-xl bg-slate-900 text-white hover:bg-slate-800 text-sm">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="admin-shell">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar">
+      <div class="admin-sidebar-inner">
+        <div class="px-4 pt-5 pb-4 border-b border-slate-200 bg-white">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-2xl bg-slate-900 text-white grid place-items-center font-bold">M</div>
+              <div>
+                <div class="font-semibold leading-tight">M_HUB</div>
+                <div class="text-xs text-slate-500 leading-tight">Admin Dashboard</div>
+              </div>
+            </div>
+            <a href="/" class="hidden md:inline px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-sm">App</a>
+          </div>
+
+          <div id="userCard" class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+            <div class="text-xs text-slate-500">Signed in</div>
+            <div class="font-semibold" id="userName">-</div>
+            <div class="text-xs text-slate-600" id="userMeta">-</div>
+            <div class="flex gap-2 mt-3">
+              <button id="btnLogout2" class="flex-1 px-3 py-2 rounded-xl bg-slate-900 text-white hover:bg-slate-800 text-sm font-semibold">Logout</button>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <div class="admin-search">
+              <input id="taskSearch" class="admin-search-input" placeholder="Search tasks…" />
+            </div>
+
+            <div class="mt-3 flex items-center justify-between">
+              <div class="text-xs font-semibold text-slate-600 uppercase tracking-wide">Tasks</div>
+              <label class="text-xs text-slate-600 flex items-center gap-2 select-none">
+                <input id="onlyActive" type="checkbox" class="rounded border-slate-300" checked />
+                Active
+              </label>
+            </div>
+          </div>
         </div>
 
-        <div class="flex gap-2">
-          <a href="/" class="px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-sm">← App</a>
-          <button id="btnLogout" class="px-3 py-2 rounded-xl bg-slate-900 text-white hover:bg-slate-800 text-sm">
+        <nav class="px-2 py-3 overflow-auto" style="flex:1">
+          <div id="taskList" class="grid gap-1"></div>
+        </nav>
+
+        <div class="px-4 py-4 border-t border-slate-200 bg-white hidden md:block">
+          <button id="btnLogout3" class="w-full px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-sm font-semibold">
             Logout
           </button>
         </div>
       </div>
-    </header>
+    </aside>
 
-    <main class="max-w-5xl mx-auto px-4 py-6">
+    <!-- Main -->
+    <main class="admin-main">
       <!-- toast container -->
       <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50"></div>
 
@@ -45,15 +95,20 @@
         </div>
       </div>
 
-      <div id="view"></div>
+      <!-- App root -->
+      <div id="adminRoot" class="max-w-6xl mx-auto px-4 py-6"></div>
     </main>
+  </div>
 
-    <!-- Shared app scripts -->
-    <script src="/config.js"></script>
-    <script src="/ui.js"></script>
-    <script src="/api.js"></script>
+  <!-- shared scripts from app -->
+  <script src="/config.js"></script>
+  <script src="/ui.js"></script>
+  <script src="/api.js"></script>
 
-    <!-- Admin script in folder -->
-    <script src="/assets/admin/admin.js"></script>
-  </body>
+  <!-- admin modules -->
+  <script src="/assets/admin/admin_api.js"></script>
+  <script src="/assets/admin/admin_components.js"></script>
+  <script src="/assets/admin/admin_state.js"></script>
+  <script src="/assets/admin/admin.js"></script>
+</body>
 </html>
