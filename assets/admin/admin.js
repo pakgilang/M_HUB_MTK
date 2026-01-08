@@ -1,5 +1,4 @@
-// /assets/admin/admin.js
-// Orchestrator: boot → fetch data → render sidebar + main + builder actions
+// /assets/admin/admin.js - FULL CODE
 
 (() => {
   "use strict";
@@ -115,8 +114,7 @@
 
       AdminState.patchBuilder({ items, selectedFieldKey: items[0]?.fieldKey || "" });
     } catch (e) {
-      // API belum ada -> ok, builder tetap bisa dipakai untuk membuat mapping baru
-      toast("Info: admin.task.fields.get belum tersedia, builder akan mulai kosong (bisa set & save).", "error");
+      toast("Info: admin.task.fields.get belum tersedia/kosong.", "info");
       AdminState.patchBuilder({ items: [], selectedFieldKey: "" });
     } finally {
       setLoading(false);
@@ -190,7 +188,7 @@
     const tabs = [
       { key: "overview", label: "Overview" },
       { key: "fields", label: "Fields (Builder)" },
-      { key: "submissions", label: "Submissions" },
+      { key: "submissions", label: "Submissions (Approval)" },
       { key: "settings", label: "Settings" },
     ];
 
@@ -256,24 +254,143 @@
     ]);
   }
 
+  // --- NEW: Render Submissions with Approval ---
   function renderSubmissions(t) {
-    return el("div", { class: "bg-white rounded-2xl border border-slate-200 p-5" }, [
-      el("div", { class: "text-lg font-semibold" }, ["Submissions"]),
-      el("div", { class: "text-sm text-slate-600 mt-1" }, [
-        "Butuh endpoint admin.task.submissions.list untuk menampilkan tabel data. (UI sudah siap.)"
-      ]),
-      el("div", { class: "mt-4" }, [
-        el("button", {
-          class: "px-4 py-2 rounded-xl border border-slate-200 hover:bg-white font-semibold text-sm",
-          onclick: () => toast("Submissions API belum diaktifkan.", "error"),
-          type: "button",
-        }, ["Load submissions (coming soon)"]),
-      ]),
-    ]);
+    const container = el("div", { id: "subContainer" }, []);
+    
+    let localSubs = [];
+    let selectedUserId = null;
+    let fieldsDef = [];
+
+    const loadData = async () => {
+      container.innerHTML = "";
+      container.appendChild(el("div", { class: "p-10 text-center text-slate-500" }, ["Memuat data submissions..."]));
+      
+      try {
+        const [subRes, fieldRes] = await Promise.all([
+          AdminAPI.adminSubmissionsList(t.taskSheet),
+          AdminAPI.adminTaskFieldsGet(t.taskSheet)
+        ]);
+        
+        localSubs = subRes.items || [];
+        fieldsDef = fieldRes.items || [];
+        renderLayout();
+      } catch (e) {
+        container.innerHTML = "";
+        container.appendChild(el("div", { class: "p-5 text-red-600 bg-red-50 rounded-xl" }, ["Error: " + e.message]));
+      }
+    };
+
+    const renderLayout = () => {
+      container.innerHTML = "";
+
+      // Left List
+      const listContainer = el("div", { class: "overflow-y-auto h-full" }, []);
+      if (localSubs.length === 0) {
+        listContainer.appendChild(el("div", { class: "p-5 text-sm text-slate-400" }, ["Belum ada yang submit."]));
+      } else {
+        localSubs.forEach(sub => {
+          listContainer.appendChild(AdminComponents.userListItem(sub, sub.id_user === selectedUserId, () => {
+            selectedUserId = sub.id_user;
+            renderLayout();
+          }));
+        });
+      }
+
+      // Right Preview
+      const previewContainer = el("div", { class: "h-full flex flex-col" }, []);
+      const selectedSub = localSubs.find(s => s.id_user === selectedUserId);
+
+      if (!selectedSub) {
+        previewContainer.appendChild(el("div", { class: "m-auto text-slate-400 text-sm text-center" }, [
+          el("div", { class: "text-4xl mb-2" }, ["👈"]),
+          "Pilih karyawan di panel kiri untuk mulai memeriksa."
+        ]));
+      } else {
+        // Header Review
+        previewContainer.appendChild(el("div", { class: "p-4 border-b border-slate-200 bg-white flex justify-between items-center shadow-sm z-10" }, [
+          el("div", {}, [
+            el("div", { class: "font-bold text-lg" }, [selectedSub.nama_lengkap]),
+            el("div", { class: "text-xs text-slate-500" }, [`ID: ${selectedSub.id_user} • Updated: ${selectedSub.updatedAt}`])
+          ]),
+          el("div", { class: "flex gap-2" }, [
+            el("button", { 
+              class: "px-4 py-2 rounded-lg border border-red-200 text-red-700 text-sm font-semibold hover:bg-red-50 transition",
+              onclick: () => doReject(selectedSub)
+            }, ["Tolak"]),
+            el("button", { 
+              class: "px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 shadow-lg transition",
+              onclick: () => doApprove(selectedSub)
+            }, ["Setujui (Approve)"])
+          ])
+        ]));
+
+        // Content
+        const formContent = el("div", { class: "flex-1 overflow-y-auto p-6" }, [
+          el("div", { class: "max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-6 grid gap-6" }, 
+            fieldsDef.map(f => {
+              const val = selectedSub[f.fieldKey];
+              if (f.labelOverride?.toLowerCase().includes("foto") || String(val).startsWith("http")) {
+                return el("div", {}, [
+                  el("div", { class: "text-xs font-bold text-slate-400 uppercase mb-2" }, [f.labelOverride || f.fieldKey]),
+                  val ? el("a", { href: val, target: "_blank" }, [
+                    el("img", { src: val, class: "w-full h-64 object-cover rounded-lg border border-slate-100 hover:opacity-90 transition bg-slate-100" })
+                  ]) : el("div", { class: "text-sm text-slate-400 italic" }, ["Tidak ada file"])
+                ]);
+              }
+              return el("div", { class: "border-b border-slate-100 pb-2" }, [
+                el("div", { class: "text-xs font-bold text-slate-400 uppercase mb-1" }, [f.labelOverride || f.fieldKey]),
+                el("div", { class: "text-base text-slate-800 whitespace-pre-wrap" }, [val || "-"])
+              ]);
+            })
+          )
+        ]);
+        previewContainer.appendChild(formContent);
+      }
+
+      container.appendChild(AdminComponents.submissionSplitView({ list: listContainer, preview: previewContainer }));
+    };
+
+    const doApprove = async (sub) => {
+      if (!confirm(`Setujui data ${sub.nama_lengkap}?`)) return;
+      setLoading(true, "Approving...");
+      try {
+        await AdminAPI.call("admin.submission.review", { 
+          taskSheet: t.taskSheet, 
+          targetUserId: sub.id_user, 
+          status: "APPROVED" 
+        });
+        toast("Data disetujui.", "success");
+        await loadData();
+      } catch (e) { toast(e.message, "error"); } 
+      finally { setLoading(false); }
+    };
+
+    const doReject = async (sub) => {
+      const reason = prompt("Masukkan alasan penolakan untuk user ini:");
+      if (reason === null) return;
+      if (!reason.trim()) return toast("Alasan wajib diisi!", "error");
+
+      setLoading(true, "Rejecting...");
+      try {
+        await AdminAPI.call("admin.submission.review", { 
+          taskSheet: t.taskSheet, 
+          targetUserId: sub.id_user, 
+          status: "REJECTED",
+          reason: reason
+        });
+        toast("Data ditolak.", "success");
+        await loadData();
+      } catch (e) { toast(e.message, "error"); } 
+      finally { setLoading(false); }
+    };
+
+    loadData();
+    return container;
   }
+  // --- END NEW Submissions ---
 
   function renderSettings(t) {
-    // Settings editor minimal (upsert task)
     const isAdmin = String(user.role || "").toLowerCase() === "admin";
     const isSuper = String(user.role || "").toLowerCase() === "superadmin";
 
@@ -309,7 +426,6 @@
       ]),
     ]);
 
-    // Apply lock
     if (atLocked) {
       const atEl = form.querySelector("#st_at");
       const avEl = form.querySelector("#st_av");
@@ -438,7 +554,6 @@
       AdminComponents.builderLayout({ left, center, right }),
     ]);
 
-    // enable DnD after mount
     setTimeout(() => initDnD(), 0);
     return wrap;
   }
@@ -693,7 +808,6 @@
   }
 
   function createNewTaskFlow() {
-    // Minimal: create a default draft task with unique name suggestion (client only)
     const d = new Date();
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
