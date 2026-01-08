@@ -1,4 +1,4 @@
-const CACHE = "m_hub-pwa-v2";
+const CACHE = "m_hub-pwa-v2.1";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
