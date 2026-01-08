@@ -1,5 +1,4 @@
-// /assets/admin/admin_components.js
-// Pure UI components (vanilla). Depends on global helper el() from ui.js
+// /assets/admin/admin_components.js - FULL CODE
 
 (() => {
   "use strict";
@@ -128,6 +127,39 @@
     ]);
   }
 
+  // --- NEW: Approval UI Components ---
+
+  function submissionSplitView({ list, preview }) {
+    return el("div", { class: "flex flex-col md:flex-row h-[calc(100vh-140px)] bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm" }, [
+      // Sidebar Kiri: Daftar User
+      el("div", { class: "w-full md:w-1/3 border-b md:border-b-0 md:border-r border-slate-200 flex flex-col" }, [
+        list // Komponen List User
+      ]),
+      // Area Kanan: Detail Review
+      el("div", { class: "flex-1 bg-slate-50 relative overflow-hidden flex flex-col" }, [
+        preview // Komponen Form Review
+      ])
+    ]);
+  }
+
+  function userListItem(sub, isSelected, onClick) {
+    let statusColor = "bg-slate-100 text-slate-600";
+    if (sub.STATUS === "APPROVED") statusColor = "bg-emerald-100 text-emerald-700";
+    if (sub.STATUS === "REJECTED") statusColor = "bg-red-100 text-red-700";
+
+    return el("button", {
+      class: `w-full text-left p-4 border-b border-slate-100 hover:bg-slate-50 transition-colors ${isSelected ? "bg-blue-50 border-l-4 border-l-blue-600" : ""}`,
+      onclick: onClick
+    }, [
+      el("div", { class: "flex justify-between items-start mb-1" }, [
+        el("div", { class: "font-bold text-slate-800 text-sm truncate pr-2" }, [sub.nama_lengkap || sub.id_user]),
+        el("span", { class: `text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor}` }, [sub.STATUS])
+      ]),
+      el("div", { class: "text-xs text-slate-500" }, [sub.id_user]),
+      el("div", { class: "text-[10px] text-slate-400 mt-1" }, [sub.updatedAt ? sub.updatedAt.split("T")[0] : "-"])
+    ]);
+  }
+
   window.AdminComponents = {
     taskListItem,
     headerBar,
@@ -135,5 +167,7 @@
     tableTasks,
     builderLayout,
     pill,
+    submissionSplitView, // New
+    userListItem,        // New
   };
 })();
